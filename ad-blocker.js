@@ -252,9 +252,12 @@
         // 处理移动端触摸事件
         if (e.touches && e.touches.length > 0) {
             e.preventDefault();
+            e.stopPropagation();
             var elem = e.touches[0].target;
         } else {
             // 处理桌面端鼠标事件
+            e.preventDefault();
+            e.stopPropagation();
             var elem = e.target;
         }
         
@@ -279,6 +282,25 @@
             elem.style.position = 'relative';
         }
         elem.dataset._hl = '1';
+        
+        // 阻止元素的默认点击行为
+        elem.onclick = function(e) {
+            e = e || window.event;
+            if (e.preventDefault) e.preventDefault();
+            if (e.stopPropagation) e.stopPropagation();
+            e.cancelBubble = true;
+            e.returnValue = false;
+            return false;
+        };
+        
+        elem.ontouchstart = function(e) {
+            e = e || window.event;
+            if (e.preventDefault) e.preventDefault();
+            if (e.stopPropagation) e.stopPropagation();
+            e.cancelBubble = true;
+            e.returnValue = false;
+            return false;
+        };
         
         // 创建屏蔽按钮
         var blockBtn = document.createElement('div');
@@ -313,6 +335,7 @@
             e.cancelBubble = true;
             e.returnValue = false;
             _blockElement(elem);
+            return false;
         };
         
         // 添加移动端触摸事件支持
@@ -323,6 +346,7 @@
             e.cancelBubble = true;
             e.returnValue = false;
             _blockElement(elem);
+            return false;
         };
         
         elem.appendChild(blockBtn);
