@@ -25,10 +25,10 @@
         '.ad-placement', '.ad-space', '.ad-unit', '.sponsored',
         // 常见ID
         '#ad', '#ads', '#advertisement', '#ad-container',
-        // 关键词
-        '[class*="ad"]', '[id*="ad"]',
         // 特定网站元素
-        '.chapter-ad', '.content-ad', '.reading-ad', '.book-ad'
+        '.chapter-ad', '.content-ad', '.reading-ad', '.book-ad',
+        // 特定广告容器
+        '.in-ad', '.ad-banner', '.ad-box', '.ad-section'
     ];
 
     // 已保存的规则
@@ -154,14 +154,84 @@
     // 优化元素
     function _optElem(element) {
         if (element && !element.dataset._opt) {
-            // 使用更隐蔽的方式隐藏元素
-            element.style.position = 'absolute';
-            element.style.left = '-9999px';
-            element.style.top = '-9999px';
-            element.style.width = '1px';
-            element.style.height = '1px';
-            element.style.overflow = 'hidden';
-            element.dataset._opt = '1';
+            // 检查元素是否为广告元素
+            var isAd = false;
+            
+            // 检查元素类名
+            var classes = element.className || '';
+            var adClassPatterns = [
+                'ad', 'advert', 'sponsor', 'promo', 'banner',
+                'popup', 'overlay', 'modal', 'dialog'
+            ];
+            
+            for (var i = 0; i < adClassPatterns.length; i++) {
+                if (classes.toLowerCase().indexOf(adClassPatterns[i]) !== -1) {
+                    isAd = true;
+                    break;
+                }
+            }
+            
+            // 检查元素ID
+            var id = element.id || '';
+            if (!isAd && id) {
+                for (var j = 0; j < adClassPatterns.length; j++) {
+                    if (id.toLowerCase().indexOf(adClassPatterns[j]) !== -1) {
+                        isAd = true;
+                        break;
+                    }
+                }
+            }
+            
+            // 检查元素内容
+            var text = element.textContent || '';
+            var adTextPatterns = [
+                '广告', '推广', '赞助商', 'sponsored', 'ad',
+                'promotion', 'advertisement', 'banner'
+            ];
+            if (!isAd && text) {
+                for (var k = 0; k < adTextPatterns.length; k++) {
+                    if (text.toLowerCase().indexOf(adTextPatterns[k]) !== -1) {
+                        isAd = true;
+                        break;
+                    }
+                }
+            }
+            
+            // 检查元素是否为图片广告
+            if (!isAd && element.tagName === 'IMG') {
+                var src = element.src || '';
+                var adSrcPatterns = ['ad', 'banner', 'promo', 'sponsor'];
+                for (var l = 0; l < adSrcPatterns.length; l++) {
+                    if (src.toLowerCase().indexOf(adSrcPatterns[l]) !== -1) {
+                        isAd = true;
+                        break;
+                    }
+                }
+            }
+            
+            // 检查元素是否为链接广告
+            if (!isAd && element.tagName === 'A') {
+                var href = element.href || '';
+                var adHrefPatterns = ['ad', 'banner', 'promo', 'sponsor'];
+                for (var m = 0; m < adHrefPatterns.length; m++) {
+                    if (href.toLowerCase().indexOf(adHrefPatterns[m]) !== -1) {
+                        isAd = true;
+                        break;
+                    }
+                }
+            }
+            
+            // 只隐藏广告元素
+            if (isAd) {
+                // 使用更隐蔽的方式隐藏元素
+                element.style.position = 'absolute';
+                element.style.left = '-9999px';
+                element.style.top = '-9999px';
+                element.style.width = '1px';
+                element.style.height = '1px';
+                element.style.overflow = 'hidden';
+                element.dataset._opt = '1';
+            }
         }
     }
 
