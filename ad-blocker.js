@@ -17,19 +17,8 @@
     var _c1 = '6f21f333c897cd27407fbb9b2395a62b';
     var _c2 = 'cfw2zxdthe4my73ansg5p31';
 
-    // 优化规则
-    var _sels = [
-        // 常见优化目标
-        '.ad', '.ads', '.advertisement', '.ad-container',
-        '.banner-ad', '.popup-ad', '.ad-banner', '.ad-wrapper',
-        '.ad-placement', '.ad-space', '.ad-unit', '.sponsored',
-        // 常见ID
-        '#ad', '#ads', '#advertisement', '#ad-container',
-        // 特定网站元素
-        '.chapter-ad', '.content-ad', '.reading-ad', '.book-ad',
-        // 特定广告容器
-        '.in-ad', '.ad-banner', '.ad-box', '.ad-section'
-    ];
+    // 屏蔽规则（仅从Gitee加载）
+    var _sels = [];
 
     // 已保存的规则
     var _rules = [];
@@ -72,12 +61,21 @@
                     }
                     if (file) {
                         var content = file.content;
-                        _rules = JSON.parse(content) || [];
+                        try {
+                            var parsed = JSON.parse(content);
+                            _rules = Array.isArray(parsed) ? parsed : [];
+                        } catch (e) {
+                            _rules = [];
+                        }
                     }
                 }
+                // 加载规则后应用到当前页面
+                _optPage();
             })
             .catch(function(error) {
-                // 静默处理错误
+                _rules = [];
+                // 即使出错也应用规则（空规则）
+                _optPage();
             });
         }, Math.random() * 1000);
     }
@@ -127,25 +125,38 @@
 
     // 优化页面
     function _optPage() {
-        // 随机延迟，避免被检测
-        if (Math.random() > 0.7) return;
+
+        // 确保_rules是数组
+        if (!Array.isArray(_rules)) {
+            _rules = [];
+        }
+        
+        // 不使用随机延迟，确保规则总是应用
         
         // 使用内置规则优化
         for (var i = 0; i < _sels.length; i++) {
             var selector = _sels[i];
-            var elements = document.querySelectorAll(selector);
-            for (var j = 0; j < elements.length; j++) {
-                _optElem(elements[j]);
+            try {
+                var elements = document.querySelectorAll(selector);
+                for (var j = 0; j < elements.length; j++) {
+                    _optElem(elements[j]);
+                }
+            } catch (e) {
+                // 忽略无效选择器
             }
         }
         
         // 使用自定义规则优化
         for (var k = 0; k < _rules.length; k++) {
             var rule = _rules[k];
-            if (rule.selector) {
-                var elements = document.querySelectorAll(rule.selector);
-                for (var l = 0; l < elements.length; l++) {
-                    _optElem(elements[l]);
+            if (rule && rule.selector) {
+                try {
+                    var elements = document.querySelectorAll(rule.selector);
+                    for (var l = 0; l < elements.length; l++) {
+                        _optElem(elements[l]);
+                    }
+                } catch (e) {
+                    // 忽略无效选择器
                 }
             }
         }
@@ -154,83 +165,21 @@
     // 优化元素
     function _optElem(element) {
         if (element && !element.dataset._opt) {
-            // 检查元素是否为广告元素
-            var isAd = false;
-            
-            // 检查元素类名
-            var classes = element.className || '';
-            var adClassPatterns = [
-                'ad', 'advert', 'sponsor', 'promo', 'banner',
-                'popup', 'overlay', 'modal', 'dialog'
-            ];
-            
-            for (var i = 0; i < adClassPatterns.length; i++) {
-                if (classes.toLowerCase().indexOf(adClassPatterns[i]) !== -1) {
-                    isAd = true;
-                    break;
-                }
-            }
-            
-            // 检查元素ID
-            var id = element.id || '';
-            if (!isAd && id) {
-                for (var j = 0; j < adClassPatterns.length; j++) {
-                    if (id.toLowerCase().indexOf(adClassPatterns[j]) !== -1) {
-                        isAd = true;
-                        break;
+            // 直接屏蔽元素，不进行广告检测
+            if (element.nodeType === 1) {
+                try {
+                    element.style.display = 'none';
+                    var styleText = 'display: none !important; visibility: hidden !important; opacity: 0 !important; position: absolute !important; left: -9999px !important; top: -9999px !important; width: 1px !important; height: 1px !important; overflow: hidden !important; z-index: -9999 !important;';
+                    if (element.style.cssText) {
+                        element.style.cssText += ' ' + styleText;
+                    } else {
+                        element.style.cssText = styleText;
                     }
+                    element.dataset._opt = '1';
+                    element.offsetHeight;
+                } catch (e) {
+                    // 忽略错误
                 }
-            }
-            
-            // 检查元素内容
-            var text = element.textContent || '';
-            var adTextPatterns = [
-                '广告', '推广', '赞助商', 'sponsored', 'ad',
-                'promotion', 'advertisement', 'banner'
-            ];
-            if (!isAd && text) {
-                for (var k = 0; k < adTextPatterns.length; k++) {
-                    if (text.toLowerCase().indexOf(adTextPatterns[k]) !== -1) {
-                        isAd = true;
-                        break;
-                    }
-                }
-            }
-            
-            // 检查元素是否为图片广告
-            if (!isAd && element.tagName === 'IMG') {
-                var src = element.src || '';
-                var adSrcPatterns = ['ad', 'banner', 'promo', 'sponsor'];
-                for (var l = 0; l < adSrcPatterns.length; l++) {
-                    if (src.toLowerCase().indexOf(adSrcPatterns[l]) !== -1) {
-                        isAd = true;
-                        break;
-                    }
-                }
-            }
-            
-            // 检查元素是否为链接广告
-            if (!isAd && element.tagName === 'A') {
-                var href = element.href || '';
-                var adHrefPatterns = ['ad', 'banner', 'promo', 'sponsor'];
-                for (var m = 0; m < adHrefPatterns.length; m++) {
-                    if (href.toLowerCase().indexOf(adHrefPatterns[m]) !== -1) {
-                        isAd = true;
-                        break;
-                    }
-                }
-            }
-            
-            // 只隐藏广告元素
-            if (isAd) {
-                // 使用更隐蔽的方式隐藏元素
-                element.style.position = 'absolute';
-                element.style.left = '-9999px';
-                element.style.top = '-9999px';
-                element.style.width = '1px';
-                element.style.height = '1px';
-                element.style.overflow = 'hidden';
-                element.dataset._opt = '1';
             }
         }
     }
@@ -278,87 +227,215 @@
         }, Math.random() * 1500);
     }
 
+    // 当前高亮的元素
+    var _currentHighlighted = null;
+    
     // 开始选择模式
     function _startSel() {
         document.addEventListener('mouseover', _hlElem);
-        document.addEventListener('click', _selElem);
     }
 
     // 结束选择模式
     function _endSel() {
         document.removeEventListener('mouseover', _hlElem);
-        document.removeEventListener('click', _selElem);
         _rmHl();
     }
 
     // 高亮元素
     function _hlElem(e) {
-        _rmHl();
         var elem = e.target;
+        
+        // 跳过已屏蔽的元素
+        if (elem.dataset._opt) return;
+        
+        // 跳过按钮本身
+        if (elem.dataset.blockBtn) return;
+        
+        // 跳过相同元素
+        if (elem === _currentHighlighted) return;
+        
+        // 移除之前的高亮
+        _rmHl();
+        
+        // 设置当前高亮元素
+        _currentHighlighted = elem;
+        
+        // 高亮元素
         elem.style.outline = '2px solid #4CAF50';
+        if (elem.style.position !== 'absolute' && elem.style.position !== 'fixed') {
+            elem.style.position = 'relative';
+        }
         elem.dataset._hl = '1';
+        
+        // 创建屏蔽按钮
+        var blockBtn = document.createElement('div');
+        blockBtn.innerHTML = '×';
+        blockBtn.style.position = 'absolute';
+        blockBtn.style.top = '-10px';
+        blockBtn.style.left = '-10px';
+        blockBtn.style.width = '20px';
+        blockBtn.style.height = '20px';
+        blockBtn.style.backgroundColor = '#f00';
+        blockBtn.style.color = '#fff';
+        blockBtn.style.borderRadius = '50%';
+        blockBtn.style.display = 'flex';
+        blockBtn.style.alignItems = 'center';
+        blockBtn.style.justifyContent = 'center';
+        blockBtn.style.fontSize = '14px';
+        blockBtn.style.fontWeight = 'bold';
+        blockBtn.style.cursor = 'pointer';
+        blockBtn.style.zIndex = '99999';
+        blockBtn.style.boxShadow = '0 2px 4px rgba(0,0,0,0.3)';
+        blockBtn.style.pointerEvents = 'auto';
+        blockBtn.style.userSelect = 'none';
+        blockBtn.style.border = 'none';
+        blockBtn.style.padding = '0';
+        blockBtn.dataset.blockBtn = '1';
+        
+        // 直接使用onclick属性，确保事件绑定
+        blockBtn.onclick = function(e) {
+            e = e || window.event;
+            if (e.preventDefault) e.preventDefault();
+            if (e.stopPropagation) e.stopPropagation();
+            e.cancelBubble = true;
+            e.returnValue = false;
+            _blockElement(elem);
+        };
+        
+        elem.appendChild(blockBtn);
     }
 
     // 移除高亮
     function _rmHl() {
-        var elems = document.querySelectorAll('[data-_hl="1"]');
-        for (var i = 0; i < elems.length; i++) {
-            elems[i].style.outline = '';
-            delete elems[i].dataset._hl;
+        if (_currentHighlighted) {
+            var elem = _currentHighlighted;
+            elem.style.outline = '';
+            if (!elem.dataset._opt && elem.style.position === 'relative') {
+                elem.style.position = '';
+            }
+            delete elem.dataset._hl;
+            
+            // 移除屏蔽按钮
+            var blockBtn = elem.querySelector('[data-block-btn="1"]');
+            if (blockBtn) {
+                blockBtn.remove();
+            }
+            
+            _currentHighlighted = null;
         }
     }
 
-    // 选择元素
-    function _selElem(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        var elem = e.target;
+    // 屏蔽元素
+    function _blockElement(elem) {
+        var sel = _genSel(elem);
         
-        if (elem.dataset._hl) {
-            var sel = _genSel(elem);
-            
-            // 添加到优化规则
-            var exists = false;
-            for (var i = 0; i < _rules.length; i++) {
-                if (_rules[i].selector === sel) {
-                    exists = true;
-                    break;
+        // 确保_rules是数组
+        if (!Array.isArray(_rules)) {
+            _rules = [];
+        }
+        
+        // 添加到优化规则
+        var exists = false;
+        for (var i = 0; i < _rules.length; i++) {
+            if (_rules[i].selector === sel) {
+                exists = true;
+                break;
+            }
+        }
+        
+        // 无论规则是否存在，都屏蔽当前元素
+        if (elem && !elem.dataset._opt) {
+            // 确保元素存在且是DOM元素
+            if (elem.nodeType === 1) {
+                // 使用内联样式直接设置
+                try {
+                    // 首先尝试简单直接的方式
+                    elem.style.display = 'none';
+                    // 然后添加更强制的样式
+                    var styleText = 'display: none !important; visibility: hidden !important; opacity: 0 !important; position: absolute !important; left: -9999px !important; top: -9999px !important; width: 1px !important; height: 1px !important; overflow: hidden !important; z-index: -9999 !important;';
+                    if (elem.style.cssText) {
+                        elem.style.cssText += ' ' + styleText;
+                    } else {
+                        elem.style.cssText = styleText;
+                    }
+                    // 标记为已屏蔽
+                    elem.dataset._opt = '1';
+                    // 强制重排
+                    elem.offsetHeight;
+                } catch (e) {
+                    // 如果直接设置样式失败，尝试其他方法
+                    try {
+                        // 创建样式表
+                        var style = document.createElement('style');
+                        style.type = 'text/css';
+                        var selector = _genSel(elem);
+                        style.innerHTML = selector + ' { display: none !important; visibility: hidden !important; opacity: 0 !important; }';
+                        document.head.appendChild(style);
+                        elem.dataset._opt = '1';
+                    } catch (e2) {
+                        // 最后的尝试：移除元素
+                        try {
+                            if (elem.parentNode) {
+                                elem.parentNode.removeChild(elem);
+                            }
+                        } catch (e3) {
+                            // 所有方法都失败，记录错误
+                            console.log('无法屏蔽元素:', e3);
+                        }
+                    }
                 }
             }
-            if (!exists) {
-                _rules.push({
-                    selector: sel,
-                    added: new Date().toISOString(),
-                    url: window.location.href
-                });
-                
-                // 立即优化
-                _optElem(elem);
-                
-                // 保存规则
-                _saveRules();
-                
-                // 使用更隐蔽的提示方式
-                var toast = document.createElement('div');
-                toast.textContent = '已优化';
-                toast.style.position = 'fixed';
-                toast.style.top = '50%';
-                toast.style.left = '50%';
-                toast.style.transform = 'translate(-50%, -50%)';
-                toast.style.padding = '10px 20px';
-                toast.style.backgroundColor = 'rgba(0,0,0,0.7)';
-                toast.style.color = '#fff';
-                toast.style.borderRadius = '4px';
-                toast.style.zIndex = '99999';
-                toast.style.fontSize = '12px';
-                document.body.appendChild(toast);
-                setTimeout(function() {
-                    toast.remove();
-                }, 1500);
-            }
-            
-            _endSel();
         }
+        
+        if (!exists) {
+            _rules.push({
+                selector: sel,
+                added: new Date().toISOString(),
+                url: window.location.href
+            });
+            
+            // 保存规则
+            _saveRules();
+            
+            // 使用更隐蔽的提示方式
+            var toast = document.createElement('div');
+            toast.textContent = '已屏蔽';
+            toast.style.position = 'fixed';
+            toast.style.top = '50%';
+            toast.style.left = '50%';
+            toast.style.transform = 'translate(-50%, -50%)';
+            toast.style.padding = '10px 20px';
+            toast.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            toast.style.color = '#fff';
+            toast.style.borderRadius = '4px';
+            toast.style.zIndex = '99999';
+            toast.style.fontSize = '12px';
+            document.body.appendChild(toast);
+            setTimeout(function() {
+                toast.remove();
+            }, 1500);
+        } else {
+            // 规则已存在的提示
+            var toast = document.createElement('div');
+            toast.textContent = '规则已存在，已屏蔽元素';
+            toast.style.position = 'fixed';
+            toast.style.top = '50%';
+            toast.style.left = '50%';
+            toast.style.transform = 'translate(-50%, -50%)';
+            toast.style.padding = '10px 20px';
+            toast.style.backgroundColor = 'rgba(0,0,0,0.7)';
+            toast.style.color = '#fff';
+            toast.style.borderRadius = '4px';
+            toast.style.zIndex = '99999';
+            toast.style.fontSize = '12px';
+            document.body.appendChild(toast);
+            setTimeout(function() {
+                toast.remove();
+            }, 1500);
+        }
+        
+        // 不移出选择模式，允许继续屏蔽其他元素
+        _rmHl();
     }
 
     // 生成元素选择器
