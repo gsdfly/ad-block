@@ -232,18 +232,31 @@
     
     // 开始选择模式
     function _startSel() {
+        // 支持桌面端鼠标事件
         document.addEventListener('mouseover', _hlElem);
+        // 支持移动端触摸事件
+        document.addEventListener('touchstart', _hlElem, { passive: false });
     }
 
     // 结束选择模式
     function _endSel() {
+        // 移除桌面端鼠标事件监听器
         document.removeEventListener('mouseover', _hlElem);
+        // 移除移动端触摸事件监听器
+        document.removeEventListener('touchstart', _hlElem);
         _rmHl();
     }
 
     // 高亮元素
     function _hlElem(e) {
-        var elem = e.target;
+        // 处理移动端触摸事件
+        if (e.touches && e.touches.length > 0) {
+            e.preventDefault();
+            var elem = e.touches[0].target;
+        } else {
+            // 处理桌面端鼠标事件
+            var elem = e.target;
+        }
         
         // 跳过已屏蔽的元素
         if (elem.dataset._opt) return;
@@ -294,6 +307,16 @@
         
         // 直接使用onclick属性，确保事件绑定
         blockBtn.onclick = function(e) {
+            e = e || window.event;
+            if (e.preventDefault) e.preventDefault();
+            if (e.stopPropagation) e.stopPropagation();
+            e.cancelBubble = true;
+            e.returnValue = false;
+            _blockElement(elem);
+        };
+        
+        // 添加移动端触摸事件支持
+        blockBtn.ontouchstart = function(e) {
             e = e || window.event;
             if (e.preventDefault) e.preventDefault();
             if (e.stopPropagation) e.stopPropagation();
